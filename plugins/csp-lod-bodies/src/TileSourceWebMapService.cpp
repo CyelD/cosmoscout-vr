@@ -351,7 +351,7 @@ std::optional<std::string> TileSourceWebMapService::loadData(TileId const& tileI
 
   // The file is already there, we can return it.
   if (boost::filesystem::exists(cacheFilePath) &&
-      boost::filesystem::file_size(cacheFile.str()) > 0) {
+      boost::filesystem::file_size(cacheFile.str()) > 2000) {
     return cacheFile.str();
   }
 
@@ -412,6 +412,17 @@ std::optional<std::string> TileSourceWebMapService::loadData(TileId const& tileI
 
     std::remove(cacheFile.str().c_str());
     throw std::runtime_error(sstr.str());
+  }
+
+  // The file is there but obviously corrupt. Remove it.
+  if (boost::filesystem::exists(cacheFilePath) &&
+      boost::filesystem::file_size(cacheFile.str()) < 2000) {
+    boost::filesystem::remove(cacheFilePath);
+    if (format == "pngRGB") {
+      logger().debug("Tile (Level: {}, x: {}, y: {}):", tileId.level(), x, y);
+      logger().debug(url.str());
+    }
+    return std::nullopt;
   }
 
   boost::filesystem::perms filePerms =
