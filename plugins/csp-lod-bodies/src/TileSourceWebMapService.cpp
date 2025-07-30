@@ -418,10 +418,8 @@ std::optional<std::string> TileSourceWebMapService::loadData(TileId const& tileI
   if (boost::filesystem::exists(cacheFilePath) &&
       boost::filesystem::file_size(cacheFile.str()) < 2000) {
     boost::filesystem::remove(cacheFilePath);
-    if (format == "pngRGB") {
-      logger().debug("Tile (Level: {}, x: {}, y: {}):", tileId.level(), x, y);
-      logger().debug(url.str());
-    }
+    logger().debug("Failed to download tile data: File '{}' is too small and thus seems to be invalid.", cacheFile.str());
+    logger().debug(url.str());
     return std::nullopt;
   }
 
