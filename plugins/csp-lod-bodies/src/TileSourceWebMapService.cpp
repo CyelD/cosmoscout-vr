@@ -136,8 +136,8 @@ bool loadImpl(TileSourceWebMapService* source, BaseTileData* tile, TileId const&
       return false;
     }
 
-    bool isCompletelyWhiteTile    = true;
-    //Iterate through pixel values and stop after one non-white pixel in tile
+    bool isCompletelyWhiteTile = true;
+    // Iterate through pixel values and stop after one non-white pixel in tile
     for (int i = 0; i < width * height; ++i) {
       unsigned char* pixel = (unsigned char*)data + i * 4;
       if (!(pixel[0] == 255 && pixel[1] == 255 && pixel[2] == 255 && pixel[3] == 255)) {
@@ -412,18 +412,18 @@ std::optional<std::string> TileSourceWebMapService::loadData(TileId const& tileI
           "Failed to download tile data: Cannot open '{}' for writing!", cacheFile.str()));
     }
 
-    //Check if we already had an error with this tile cache file in the past
-    if (m_LastTimeTileFailed.find(cacheFilePath) != m_LastTimeTileFailed.end())
-    {
+    // Check if we already had an error with this tile cache file in the past
+    if (m_LastTimeTileFailed.find(cacheFilePath) != m_LastTimeTileFailed.end()) {
       auto cooldownTime = std::chrono::seconds(3);
-      auto timeNow       = std::chrono::system_clock::now();
-      if (timeNow - m_LastTimeTileFailed[cacheFilePath]< cooldownTime) {
+      auto timeNow      = std::chrono::system_clock::now();
+      if (timeNow - m_LastTimeTileFailed[cacheFilePath] < cooldownTime) {
         logger().warn(
-              "Failed to download tile data: Waiting for '{}' to cool down", cacheFile.str());
-          //Sleep for the rest of the cooldown time (plus a little longer 500ms)
-          std::this_thread::sleep_until(m_LastTimeTileFailed[cacheFilePath] + cooldownTime + std::chrono::milliseconds(500));
-        }
-        m_LastTimeTileFailed.erase(cacheFilePath);  
+            "Failed to download tile data: Waiting for '{}' to cool down", cacheFile.str());
+        // Sleep for the rest of the cooldown time (plus a little longer 500ms)
+        std::this_thread::sleep_until(
+            m_LastTimeTileFailed[cacheFilePath] + cooldownTime + std::chrono::milliseconds(500));
+      }
+      m_LastTimeTileFailed.erase(cacheFilePath);
     }
 
     curlpp::Easy request;
@@ -526,8 +526,7 @@ bool TileSourceWebMapService::isSame(TileSource const* other) const {
   return casted != nullptr && mUrl == casted->mUrl && mCache == casted->mCache &&
          mLayers == casted->mLayers && mFormat == casted->mFormat;
 }
-void TileSourceWebMapService::markTileDataAsInvalid(const boost::filesystem::path& TileDataPath)
-{
+void TileSourceWebMapService::markTileDataAsInvalid(const boost::filesystem::path& TileDataPath) {
   m_LastTimeTileFailed[TileDataPath] = std::chrono::system_clock::now();
 }
 
