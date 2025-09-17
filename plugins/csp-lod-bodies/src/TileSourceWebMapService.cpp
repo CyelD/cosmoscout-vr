@@ -371,7 +371,7 @@ std::optional<std::string> TileSourceWebMapService::loadData(TileId const& tileI
 
   // The file is already there, we can return it.
   if (boost::filesystem::exists(cacheFilePath) &&
-      boost::filesystem::file_size(cacheFile.str()) > 2000) {
+      boost::filesystem::file_size(cacheFile.str()) > 0) {
     return cacheFile.str();
   }
 
