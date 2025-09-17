@@ -136,6 +136,26 @@ bool loadImpl(TileSourceWebMapService* source, BaseTileData* tile, TileId const&
       return false;
     }
 
+    bool isCompletelyWhiteTile    = true;
+    //Iterate through pixel values and stop after one non-white pixel in tile
+    for (int i = 0; i < width * height; ++i) {
+      unsigned char* pixel = (unsigned char*)data + i * 4;
+      if (!(pixel[0] == 255 && pixel[1] == 255 && pixel[2] == 255 && pixel[3] == 255)) {
+        isCompletelyWhiteTile = false;
+        break;
+      }
+    }
+    if (isCompletelyWhiteTile) {
+      logger().debug(
+          "Failed to parse tile data: File '{}' is completely white and most likely corrupt.",
+          *cacheFile);
+      source->markTileDataAsInvalid(*cacheFile);
+      if (boost::filesystem::remove(*cacheFile) == 0) {
+        logger().debug("Failed to remove tile data: File '{}'", *cacheFile);
+      }
+      return false;
+    }
+
     // The image data can be read. For some patches (those at the international date boundary)
     // two requests are made. For those, only half of the pixels contain valid data (above or below
     // the diagonal).
@@ -392,6 +412,20 @@ std::optional<std::string> TileSourceWebMapService::loadData(TileId const& tileI
           "Failed to download tile data: Cannot open '{}' for writing!", cacheFile.str()));
     }
 
+    //Check if we already had an error with this tile cache file in the past
+    if (m_LastTimeTileFailed.find(cacheFilePath) != m_LastTimeTileFailed.end())
+    {
+      auto cooldownTime = std::chrono::seconds(3);
+      auto timeNow       = std::chrono::system_clock::now();
+      if (timeNow - m_LastTimeTileFailed[cacheFilePath]< cooldownTime) {
+        logger().warn(
+              "Failed to download tile data: Waiting for '{}' to cool down", cacheFile.str());
+          //Sleep for the rest of the cooldown time (plus a little longer 500ms)
+          std::this_thread::sleep_until(m_LastTimeTileFailed[cacheFilePath] + cooldownTime + std::chrono::milliseconds(500));
+        }
+        m_LastTimeTileFailed.erase(cacheFilePath);  
+    }
+
     curlpp::Easy request;
     request.setOpt(curlpp::options::Url(url.str()));
     request.setOpt(curlpp::options::WriteStream(&out));
@@ -412,15 +446,6 @@ std::optional<std::string> TileSourceWebMapService::loadData(TileId const& tileI
 
     std::remove(cacheFile.str().c_str());
     throw std::runtime_error(sstr.str());
-  }
-
-  // The file is there but obviously corrupt. Remove it.
-  if (boost::filesystem::exists(cacheFilePath) &&
-      boost::filesystem::file_size(cacheFile.str()) < 2000) {
-    boost::filesystem::remove(cacheFilePath);
-    logger().debug("Failed to download tile data: File '{}' is too small and thus seems to be invalid.", cacheFile.str());
-    logger().debug(url.str());
-    return std::nullopt;
   }
 
   boost::filesystem::perms filePerms =
@@ -500,6 +525,10 @@ bool TileSourceWebMapService::isSame(TileSource const* other) const {
 
   return casted != nullptr && mUrl == casted->mUrl && mCache == casted->mCache &&
          mLayers == casted->mLayers && mFormat == casted->mFormat;
+}
+void TileSourceWebMapService::markTileDataAsInvalid(const boost::filesystem::path& TileDataPath)
+{
+  m_LastTimeTileFailed[TileDataPath] = std::chrono::system_clock::now();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

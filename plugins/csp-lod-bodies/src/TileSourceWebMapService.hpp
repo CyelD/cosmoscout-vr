@@ -70,6 +70,12 @@ class TileSourceWebMapService : public TileSource {
   // writable) a std::runtime_error is thrown.
   std::optional<std::string> loadData(TileId const& tileId, int x, int y);
 
+
+  // This will mark a previously downloaded tile file as invalid together with the current timestamp.
+  // This information is used to avoid quering the same tile immediately after we've received invalid data from server
+  // Tracking the time of the last error allows us to apply a kind of cooldown mechanism
+  void markTileDataAsInvalid(const boost::filesystem::path& TileDataPath);
+
  private:
   static std::mutex mFileSystemMutex;
 
@@ -79,6 +85,10 @@ class TileSourceWebMapService : public TileSource {
   std::string           mLayers;
   TileDataType          mFormat = TileDataType::eColor;
   uint32_t              mResolution;
+
+  //We keep track of the time a tile has had invalid data from the server.
+  //This timestamp is used for a cooldown mechanism
+  std::map<boost::filesystem::path, std::chrono::system_clock::time_point> m_LastTimeTileFailed;
 };
 } // namespace csp::lodbodies
 
