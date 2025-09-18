@@ -413,17 +413,17 @@ std::optional<std::string> TileSourceWebMapService::loadData(TileId const& tileI
     }
 
     // Check if we already had an error with this tile cache file in the past
-    if (m_LastTimeTileFailed.find(cacheFilePath) != m_LastTimeTileFailed.end()) {
+    if (mLastTimeTileFailed.find(cacheFilePath) != mLastTimeTileFailed.end()) {
       auto cooldownTime = std::chrono::seconds(3);
       auto timeNow      = std::chrono::system_clock::now();
-      if (timeNow - m_LastTimeTileFailed[cacheFilePath] < cooldownTime) {
+      if (timeNow - mLastTimeTileFailed[cacheFilePath] < cooldownTime) {
         logger().warn(
             "Failed to download tile data: Waiting for '{}' to cool down", cacheFile.str());
         // Sleep for the rest of the cooldown time (plus a little longer 500ms)
         std::this_thread::sleep_until(
-            m_LastTimeTileFailed[cacheFilePath] + cooldownTime + std::chrono::milliseconds(500));
+            mLastTimeTileFailed[cacheFilePath] + cooldownTime + std::chrono::milliseconds(500));
       }
-      m_LastTimeTileFailed.erase(cacheFilePath);
+      mLastTimeTileFailed.erase(cacheFilePath);
     }
 
     curlpp::Easy request;
@@ -530,7 +530,7 @@ bool TileSourceWebMapService::isSame(TileSource const* other) const {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void TileSourceWebMapService::markTileDataAsInvalid(boost::filesystem::path const& TileDataPath) {
-  m_LastTimeTileFailed[TileDataPath] = std::chrono::system_clock::now();
+  mLastTimeTileFailed[TileDataPath] = std::chrono::system_clock::now();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
