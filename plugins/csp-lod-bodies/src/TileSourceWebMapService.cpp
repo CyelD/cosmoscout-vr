@@ -139,8 +139,8 @@ bool loadImpl(TileSourceWebMapService* source, BaseTileData* tile, TileId const&
     bool isCompletelyWhiteTile = true;
     // Iterate through pixel values and stop after one non-white pixel in tile
     for (int i = 0; i < width * height; ++i) {
-      unsigned char* pixel = (unsigned char*)data + i * 4;
-      if (!(pixel[0] == 255 && pixel[1] == 255 && pixel[2] == 255 && pixel[3] == 255)) {
+      auto pixel = reinterpret_cast<uint8_t*>(data) + i * 4;
+      if (pixel[0] != 255 || pixel[1] != 255 || pixel[2] != 255 || pixel[3] != 255) {
         isCompletelyWhiteTile = false;
         break;
       }
@@ -526,7 +526,10 @@ bool TileSourceWebMapService::isSame(TileSource const* other) const {
   return casted != nullptr && mUrl == casted->mUrl && mCache == casted->mCache &&
          mLayers == casted->mLayers && mFormat == casted->mFormat;
 }
-void TileSourceWebMapService::markTileDataAsInvalid(const boost::filesystem::path& TileDataPath) {
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void TileSourceWebMapService::markTileDataAsInvalid(boost::filesystem::path const& TileDataPath) {
   m_LastTimeTileFailed[TileDataPath] = std::chrono::system_clock::now();
 }
 
