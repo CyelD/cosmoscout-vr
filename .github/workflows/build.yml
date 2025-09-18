@@ -178,7 +178,7 @@ jobs:
 
   build_windows:
     name: Windows MSVC 19.25
-    runs-on: windows-2019
+    runs-on: windows-2025
     if: >
       github.event_name == 'pull_request' ||
       ( contains(github.ref, 'main') && !contains(github.event.head_commit.message, '[no-ci]') ) ||
