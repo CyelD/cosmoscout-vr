@@ -32,6 +32,7 @@ if (UNIX)
 endif()
 
 # install files for all platforms ------------------------------------------------------------------
+install(FILES "scene/user-guided-tour_hmd.json" DESTINATION "share/config")
 install(FILES "scene/simple_desktop.json" DESTINATION "share/config")
 install(FILES "scene/simple_hmd.json"     DESTINATION "share/config")
 install(DIRECTORY "vista"                 DESTINATION "share/config")

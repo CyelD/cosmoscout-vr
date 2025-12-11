@@ -1,0 +1,6 @@
+[InternetShortcut]
+URL=http://localhost:8080/cgi-bin/mapserv?map=/mapserver-datasets/meta.map&service=wms&version=1.3.0&request=GetMap&layers=earth.naturalearth.rgb&bbox=-90,-180,90,180&width=1600&height=800&crs=epsg:4326&format=pngRGB
+IDList=
+HotKey=0
+IconFile=C:\Users\kjeld\AppData\Local\Mozilla\Firefox\Profiles\eehhkpf8.default-release\shortcutCache\aYjOghVHFCaWv6XGkUtBoufQqQfQhyhUdcRB0VtDbTs=.ico
+IconIndex=0
