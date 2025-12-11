@@ -31,9 +31,10 @@ In the following, the individual parameters are explained and the required steps
   "resetDate": "today",
   "minDate": "1950-01-02 00:00:00.000",
   "maxDate": "2049-12-31 00:00:00.000",
-  "fileLogLevel": "debug",
-  "consoleLogLevel": "trace",
-  "screenLogLevel": "info",
+  "logLevelFile": "debug",
+  "logLevelConsole": "trace",
+  "logLevelScreen": "info",
+  "logLevelGL": "info",
   "observer": {
     "center": "Earth",
     "frame": "IAU_Earth",
@@ -64,7 +65,9 @@ In the following, the individual parameters are explained and the required steps
 * **`"resetDate"`:** This should be either `"today"` or in the format `"1950-01-02 00:00:00.000"`. The simulation time will be set to this value when the reset button is clicked.
 * **`"minDate"`:** This should be in the format `"1950-01-02 00:00:00.000"` and determines the left end of the timeline. You have to make sure that the loaded SPICE kernels are valid for this time range.
 * **`"maxDate"`:** This should be in the format `"2049-12-31 00:00:00.000"` and determines the right end of the timeline. You have to make sure that the loaded SPICE kernels are valid for this time range.
-* **`"fileLogLevel"`**, **`"consoleLogLevel"`** and **`"screenLogLevel"`:** Adjust the verbosity of the log output written to `cosmoscout.log`, written to the command line and written to the on-screen console respectively. Should be one of 
+* **`"logLevelFile"`**, **`"logLevelConsole"`**, and **`"logLevelScreen"`:** Adjust the verbosity of the log output written to `cosmoscout.log`, written to the command line and written to the on-screen console respectively. Should be one of 
+`"trace"`, `"debug"`, `"info"`, `"warning"`, `"error"`, `"critical"` or `"off"`.
+* **`"logLevelGL"`:** An additional log level which can be used to further restrict the log output of OpenGL calls. Should be one of 
 `"trace"`, `"debug"`, `"info"`, `"warning"`, `"error"`, `"critical"` or `"off"`.
 * **`"observer"`:** Specifies the initial position of the virtual camera. `"center"` and `"frame"` define the initial SPICE reference frame; `"distance"` (in meters), `"longitude"` and `"latitude"` (in degree) the 3D-position inside this reference frame.
 For more background information on SPICE reference frames, you may read [this document](https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/Tutorials/pdf/individual_docs/17_frames_and_coordinate_systems.pdf). 
@@ -1041,11 +1044,104 @@ The trick is, to create a separate git repository for your configuration files a
   subdirectories.
   So you can install any scripts / configs / data files you like as part of CosmoScout's build process!
 
-  <p align="center"><img src="img/hr.svg" /></p>
-  <p align="center">
-    <a href="using.md">&lsaquo; Using CosmoScout VR</a>
-    <img src="img/nav-vspace.svg" />
-    <a href="README.md">&#8962; Help Index</a>
-    <img src="img/nav-vspace.svg" />
-    <a href="contributing.md">Contributing Guides &rsaquo;</a>
-  </p>
+
+## 4. Customize Shading
+
+CosmoScout VR applies PBR for each body individually.
+You can customize that by specifying a BRDF, parameters and values.
+Here is an example configuration:
+```json
+"graphics": {
+  "shading": {
+    "Earth": {
+      "brdfHdr": {
+        "source": "../share/resources/shaders/brdfs/oren-nayar.glsl",
+        "properties": {
+          "$rho": 0.2,
+          "$sigma": 20.0
+        }
+      },
+      "brdfNonHdr": {
+        "source": "../share/resources/shaders/brdfs/oren-nayar_scaled.glsl",
+        "properties": {
+          "$rho": 1.0,
+          "$sigma": 20.0
+        }
+      },
+      "avgLinearImgIntensity": 0.0388402
+    }
+  }
+}
+```
+
+A BRDF is defined by source code similar to GLSL.
+The material properties are given by names and values.
+The settings `brdfHdr` and `brdfNonHdr` set the BRDFs to be used when HDR and lighting are enabled respectively.
+When both are enabled, then the BRDF specified by `brdfHdr` is used.
+The reason for why we have two settings is that BRDFs usually evaluate to a small number.
+This is not a problem in HDR rendering as we simulate a camera with an exposure value, but it is problematic otherwise.
+To avoid very dark surfaces when lighting but no HDR are enabled, `brdfNonHdr` can reference a scaled pseudo BRDF.
+
+The setting `avgLinearImgIntensity` scales the surface brightness inversely in HDR rendering for an accurate magnitude of luminance.
+To calculate this value, you need to gamma decode your image to linear space.
+Then you need to calculate the weighted average brightness, considering the pixel positions.
+*Reason: Your image is likely an equirectangular projection so e.g. the pixels in the first pixel row reference the same point.*
+For simplicity, you can also calculate the average brightness of an image,
+normalize and raise the result to the power of gamma, e.g. 2.2 with a casual sRGB image.
+This is quick and simple but also less accurate.
+The visual appearance of the scene is not affected by this setting.
+
+If no shading is specified for a body, the Oren-Nayar model is used per default:
+```json
+"defaultShading": {
+  "brdfHdr": {
+    "source": "../share/resources/shaders/brdfs/oren-nayar.glsl",
+    "properties": {
+      "$rho": 0.5,
+      "$sigma": 20
+    }
+  },
+  "brdfNonHdr": {
+    "source": "../share/resources/shaders/brdfs/oren-nayar_scaled.glsl",
+    "properties": {
+      "$rho": 1.0,
+      "$sigma": 20
+    }
+  },
+  "avgLinearImgIntensity": 0.5
+}
+```
+
+This can be customized as well of course.
+
+### Custom BRDFs
+
+There are a few BRDFs already present that work well for most cases.
+If you want to add a new BRDF, add another file to the current repertoire and use it.
+Let's look at the definition of the Lambertian BRDF:
+```glsl
+// Lambertian reflectance to represent ideal diffuse surfaces.
+
+// rho: Reflectivity of the surface in range [0, 1].
+
+float $BRDF(vec3 N, vec3 L, vec3 V)
+{
+  return $rho / 3.14159265358979323846;
+}
+```
+
+The signature of the BRDF has to be `float $BRDF(vec3 N, vec3 L, vec3 V)`, where `N` is the surface normal,
+`L` is the direction of incident illumination and `V` is the direction of observation.
+The given vectors are normalized. Properties are injected via the dollar sign syntax.
+Besides these restrictions, the code must be GLSL code.
+Please include a description for each parameter and the BRDF overall, and a reference if possible.
+
+
+<p align="center"><img src="img/hr.svg" /></p>
+<p align="center">
+  <a href="using.md">&lsaquo; Using CosmoScout VR</a>
+  <img src="img/nav-vspace.svg" />
+  <a href="README.md">&#8962; Help Index</a>
+  <img src="img/nav-vspace.svg" />
+  <a href="contributing.md">Contributing Guides &rsaquo;</a>
+</p>
